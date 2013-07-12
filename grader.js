@@ -26,8 +26,11 @@
 var fs = require('fs');
 var program = require('commander');
 var cheerio = require('cheerio');
+var restler = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT ="checks.json";
+var URL_DEFAULT = "https://www.google.com";
+console.log("URL_DEFAULT is %s.", URL_DEFAULT);
 
 var assertFileExists = function(infile){
     var instr = infile.toString();
@@ -67,8 +70,16 @@ if(require.main == module) {
     program
 	.option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
 	.option('-f, --file <html_files>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-u, --url <website_url>', 'URL of website to check', URL_DEFAULT)
 	.parse(process.argv);
+    console.log("Check file is %s.\nHTML file is %s.\nURL is %s.", program.checks, program.file, program.url);
+  if(program.url != URL_DEFAULT){
+	console.log("Using url.")
+	//var checkJson = restler.get(program.url).on('complete', checkHtmlFile(result, program.checks));
+        var checkJson = checkHtmlFile(restler.get(program.url), program.checks);
+    } else {
     var checkJson = checkHtmlFile(program.file, program.checks);
+  };
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
 } else {
