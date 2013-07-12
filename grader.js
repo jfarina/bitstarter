@@ -31,7 +31,8 @@ var restler = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT ="checks.json";
 var URL_DEFAULT = "https://www.google.com";
-var URL_OUT_FILE = "url_out.html"
+var URL_OUT_FILE = "url_out.html";
+var CHECK_RESULTS = "check_results.txt";
 console.log("URL_DEFAULT is %s.", URL_DEFAULT);
 
 var assertFileExists = function(infile){
@@ -68,33 +69,53 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
-var writeRestler2File = function(result, response) {
-    if (result instanceof Error) {
-	console.error('Error: ' + util.format(response.message));
-    } else {
-	console.error("Wrote %s", URL_OUT_FILE);
-	fs.writeFileSync(URL_OUT_FILE, result);
-    }
+var buildfn = function(output_file) {
+    var writeRestler2File = function(result, response) {
+	var done = false;
+	if (result instanceof Error) {
+	    console.error('Error: ' + util.format(response.message));
+	} else {
+	    console.error("Wrote %s", URL_OUT_FILE);
+	    fs.writeFileSync(output_file, result);
+	    done = true;
+	}
+	return done;
+    };
+    return writeRestler2File;
 };
 
-
+var completeChecks = function(output_file, checks_file) {
+    var checkJson = checkHtmlFile(output_file, checks_file);
+    var outJson = JSON.stringify(checkJson, null, 4);
+    console.log(outJson);
+    fs.writeFileSync(CHECK_RESULTS, outJson);
+};
 
 if(require.main == module) {
     program
 	.option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
 	.option('-f, --file <html_files>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-u, --url <website_url>', 'URL of website to check', URL_DEFAULT)
+	.option('-u, --url <website_url>', 'URL of website to check', URL_DEFAULT)
 	.parse(process.argv);
     console.log("Check file is %s.\nHTML file is %s.\nURL is %s.", program.checks, program.file, program.url);
-  if(program.url != URL_DEFAULT){
-	console.log("Using url.")
-	//var checkJson = restler.get(program.url).on('complete', checkHtmlFile(result, program.checks));
-        var checkJson = checkHtmlFile(URL_OUT_FILE, program.checks);
+    if(program.url != URL_DEFAULT){
+	console.log("Using url.");
+	program.file = URL_OUT_FILE;
+	var writeRestler2File = buildfn(URL_OUT_FILE);
+	restler.get(program.url).on('complete', writeRestler2File);
+	completeChecks(program.file, program.checks);
+	
+//	setTimeout(completeChecks(program.file, program.checks), 5000);
+//	while(!done) {
+//Wait for reslter.get to complete before moving on.
+//	}
+//    var checkJson = checkHtmlFile(URL_OUT_FILE, program.checks);
     } else {
-    var checkJson = checkHtmlFile(program.file, program.checks);
-  };
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
+	completeChecks(program.file, program.checks);
+//	var checkJson = checkHtmlFile(program.file, program.checks);
+    }
+//    var outJson = JSON.stringify(checkJson, null, 4);
+//    console.log(outJson);
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
