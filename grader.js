@@ -24,12 +24,14 @@
 
 
 var fs = require('fs');
+var util = require('util');
 var program = require('commander');
 var cheerio = require('cheerio');
 var restler = require('restler');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT ="checks.json";
 var URL_DEFAULT = "https://www.google.com";
+var URL_OUT_FILE = "url_out.html"
 console.log("URL_DEFAULT is %s.", URL_DEFAULT);
 
 var assertFileExists = function(infile){
@@ -66,6 +68,17 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
+var writeRestler2File = function(result, response) {
+    if (result instanceof Error) {
+	console.error('Error: ' + util.format(response.message));
+    } else {
+	console.error("Wrote %s", URL_OUT_FILE);
+	fs.writeFileSync(URL_OUT_FILE, result);
+    }
+};
+
+
+
 if(require.main == module) {
     program
 	.option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
@@ -76,7 +89,7 @@ if(require.main == module) {
   if(program.url != URL_DEFAULT){
 	console.log("Using url.")
 	//var checkJson = restler.get(program.url).on('complete', checkHtmlFile(result, program.checks));
-        var checkJson = checkHtmlFile(restler.get(program.url), program.checks);
+        var checkJson = checkHtmlFile(URL_OUT_FILE, program.checks);
     } else {
     var checkJson = checkHtmlFile(program.file, program.checks);
   };
